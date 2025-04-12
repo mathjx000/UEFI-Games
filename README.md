@@ -9,7 +9,7 @@ Contains the following games:
 
 ## Building
 
-Requires [Zig] version `0.13.0`.
+Requires [Zig] version `0.14.0`.
 
 ```sh
 # To build all the games simply use

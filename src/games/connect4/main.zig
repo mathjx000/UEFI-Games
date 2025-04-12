@@ -1,20 +1,21 @@
 const std = @import("std");
 const uefi = std.os.uefi;
-const EfiError = uefi.Status.EfiError;
+const UefiError = uefi.Status.Error;
+const STO = uefi.protocol.SimpleTextOutput;
 
-const consts = @import("consts.zig");
+const errors = @import("errors.zig");
 const display = @import("display.zig");
 const game = @import("game.zig");
 
 pub fn main() uefi.Status {
     wrappedMain() catch |err| {
-        inline for (@typeInfo(EfiError).ErrorSet.?) |variant| {
-            if (err == @field(EfiError, variant.name)) {
+        inline for (@typeInfo(UefiError).error_set.?) |variant| {
+            if (err == @field(UefiError, variant.name)) {
                 if (uefi.system_table.boot_services) |bs| {
                     if (uefi.system_table.con_out) |out| {
                         _ = bs.stall(5 * 1000 * 1000);
 
-                        _ = out.setAttribute(consts.background_black | consts.red);
+                        _ = out.setAttribute(STO.background_black | STO.red);
                         _ = out.clearScreen();
                         _ = out.setCursorPosition(0, 0);
                         _ = out.outputString(&comptimeUCS2("ERROR: "));
@@ -47,15 +48,15 @@ pub fn main() uefi.Status {
                     }
                 }
 
-                return @field(uefi.Status, variant.name);
+                return errors.toStatus(err);
             }
         }
     };
 
-    return .Success;
+    return .success;
 }
 
-fn wrappedMain() EfiError!void {
+fn wrappedMain() UefiError!void {
     const out = uefi.system_table.con_out orelse return error.Unsupported;
     const bs = uefi.system_table.boot_services orelse return error.Unsupported;
 
@@ -91,7 +92,7 @@ fn comptimeUCS2(comptime input: []const u8) [input.len:0]u16 {
 }
 
 /// https://fr.wikipedia.org/wiki/ISO/CEI_10646
-fn runtimeUCS2(input: []const u8, output: [:0]u16) EfiError![:0]u16 {
+fn runtimeUCS2(input: []const u8, output: [:0]u16) UefiError![:0]u16 {
     if (input.len > output.len) return error.OutOfResources;
 
     for (input, output[0..input.len]) |c, *w| {

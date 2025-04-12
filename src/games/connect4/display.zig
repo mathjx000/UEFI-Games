@@ -1,12 +1,11 @@
 const std = @import("std");
 const uefi = std.os.uefi;
-const EfiError = uefi.Status.EfiError;
-
-const consts = @import("consts.zig");
+const UefiError = uefi.Status.Error;
+const STO = uefi.protocol.SimpleTextOutput;
 const game = @import("game.zig");
 
 pub const GraphicsCfg = struct {
-    out: *uefi.protocol.SimpleTextOutput,
+    out: *STO,
 
     columns: usize,
     rows: usize,
@@ -40,7 +39,7 @@ pub const GraphicsCfg = struct {
     };
 };
 
-pub fn displayBoard(board: *const game.Board, gcfg: *const GraphicsCfg) EfiError!void {
+pub fn displayBoard(board: *const game.Board, gcfg: *const GraphicsCfg) UefiError!void {
     const width = (blk: {
         var sum: usize = 0;
         if (gcfg.outer_borders) sum += 2;
@@ -61,7 +60,7 @@ pub fn displayBoard(board: *const game.Board, gcfg: *const GraphicsCfg) EfiError
 
     var current_row = rOffset + 1;
 
-    try gcfg.out.setAttribute(consts.background_black | consts.lightgray).err();
+    try gcfg.out.setAttribute(STO.background_black | STO.lightgray).err();
     try gcfg.out.clearScreen().err();
 
     {
@@ -82,7 +81,7 @@ pub fn displayBoard(board: *const game.Board, gcfg: *const GraphicsCfg) EfiError
         if (board_row != 0) {
             try gcfg.out.setCursorPosition(cOffset, current_row).err();
             // redundent
-            // try gcfg.out.setAttribute(consts.background_black | consts.lightgray).err();
+            // try gcfg.out.setAttribute(STO.background_black | STO.lightgray).err();
 
             try gcfg.out.outputString(&.{gcfg.charset.outer.vertical}).err();
             for (0..game.Board.columns) |col| {
@@ -107,31 +106,31 @@ pub fn displayBoard(board: *const game.Board, gcfg: *const GraphicsCfg) EfiError
             try gcfg.out.setCursorPosition(cOffset, current_row).err();
 
             // redundent
-            // try gcfg.out.setAttribute(consts.background_black | consts.lightgray).err();
+            // try gcfg.out.setAttribute(STO.background_black | STO.lightgray).err();
             try gcfg.out.outputString(&.{gcfg.charset.outer.vertical}).err();
 
             for (0..game.Board.columns) |col| {
                 if (col != 0) {
-                    try gcfg.out.setAttribute(consts.background_black | consts.lightgray).err();
+                    try gcfg.out.setAttribute(STO.background_black | STO.lightgray).err();
                     try gcfg.out.outputString(&.{gcfg.charset.inner.vertical}).err();
                 }
 
                 const attr, const char = switch (board.grid[col + board_row * game.Board.rows]) {
                     .None => switch (col == hover_column) {
-                        false => .{ consts.background_black | consts.black, gcfg.charset.clear },
-                        true => .{ consts.background_black | consts.lightgray, gcfg.charset.hover },
+                        false => .{ STO.background_black | STO.black, gcfg.charset.clear },
+                        true => .{ STO.background_black | STO.lightgray, gcfg.charset.hover },
                     },
-                    .Red => .{ consts.background_black | consts.red, gcfg.charset.piece.normal },
-                    .Yellow => .{ consts.background_black | consts.yellow, gcfg.charset.piece.normal },
-                    .RedHighlight => .{ consts.background_black | consts.red, gcfg.charset.piece.highlighted },
-                    .YellowHighlight => .{ consts.background_black | consts.yellow, gcfg.charset.piece.highlighted },
+                    .Red => .{ STO.background_black | STO.red, gcfg.charset.piece.normal },
+                    .Yellow => .{ STO.background_black | STO.yellow, gcfg.charset.piece.normal },
+                    .RedHighlight => .{ STO.background_black | STO.red, gcfg.charset.piece.highlighted },
+                    .YellowHighlight => .{ STO.background_black | STO.yellow, gcfg.charset.piece.highlighted },
                 };
                 try gcfg.out.setAttribute(attr).err();
                 for (0..gcfg.piece_size) |_| {
                     try gcfg.out.outputString(&.{ char, char }).err();
                 }
             }
-            try gcfg.out.setAttribute(consts.background_black | consts.lightgray).err();
+            try gcfg.out.setAttribute(STO.background_black | STO.lightgray).err();
             try gcfg.out.outputString(&.{gcfg.charset.outer.vertical}).err();
             current_row += 1;
         }
@@ -141,7 +140,7 @@ pub fn displayBoard(board: *const game.Board, gcfg: *const GraphicsCfg) EfiError
         // last line is border only
         try gcfg.out.setCursorPosition(cOffset, current_row).err();
         // redundent
-        // try gcfg.out.setAttribute(consts.background_black | consts.lightgray).err();
+        // try gcfg.out.setAttribute(STO.background_black | STO.lightgray).err();
         try gcfg.out.outputString(&.{gcfg.charset.outer.bottom_left}).err();
         for (1..width - 1) |_| {
             try gcfg.out.outputString(&.{gcfg.charset.outer.horizontal}).err();
@@ -153,24 +152,24 @@ pub fn displayBoard(board: *const game.Board, gcfg: *const GraphicsCfg) EfiError
 const supported_charsets = [_]GraphicsCfg.Charset{
     .{
         .clear = ' ',
-        .hover = consts.blockelement_light_shade,
-        .arrow = consts.arrow_down,
+        .hover = STO.blockelement_light_shade,
+        .arrow = STO.arrow_down,
         .piece = .{
-            .normal = consts.blockelement_full_block,
-            .highlighted = consts.blockelement_light_shade,
+            .normal = STO.blockelement_full_block,
+            .highlighted = STO.blockelement_light_shade,
         },
         .outer = .{
-            .vertical = consts.boxdraw_double_vertical,
-            .horizontal = consts.boxdraw_double_horizontal,
-            .top_left = consts.boxdraw_double_down_right,
-            .top_right = consts.boxdraw_double_down_left,
-            .bottom_left = consts.boxdraw_double_up_right,
-            .bottom_right = consts.boxdraw_double_up_left,
+            .vertical = STO.boxdraw_double_vertical,
+            .horizontal = STO.boxdraw_double_horizontal,
+            .top_left = STO.boxdraw_double_down_right,
+            .top_right = STO.boxdraw_double_down_left,
+            .bottom_left = STO.boxdraw_double_up_right,
+            .bottom_right = STO.boxdraw_double_up_left,
         },
         .inner = .{
-            .vertical = consts.boxdraw_vertical,
-            .horizontal = consts.boxdraw_horizontal,
-            .cross = consts.boxdraw_vertical_horizontal,
+            .vertical = STO.boxdraw_vertical,
+            .horizontal = STO.boxdraw_horizontal,
+            .cross = STO.boxdraw_vertical_horizontal,
         },
     },
     .{
@@ -178,21 +177,21 @@ const supported_charsets = [_]GraphicsCfg.Charset{
         .hover = ':',
         .arrow = 'V',
         .piece = .{
-            .normal = consts.blockelement_full_block,
+            .normal = STO.blockelement_full_block,
             .highlighted = '%',
         },
         .outer = .{
-            .vertical = consts.boxdraw_double_vertical,
-            .horizontal = consts.boxdraw_double_horizontal,
-            .top_left = consts.boxdraw_double_down_right,
-            .top_right = consts.boxdraw_double_down_left,
-            .bottom_left = consts.boxdraw_double_up_right,
-            .bottom_right = consts.boxdraw_double_up_left,
+            .vertical = STO.boxdraw_double_vertical,
+            .horizontal = STO.boxdraw_double_horizontal,
+            .top_left = STO.boxdraw_double_down_right,
+            .top_right = STO.boxdraw_double_down_left,
+            .bottom_left = STO.boxdraw_double_up_right,
+            .bottom_right = STO.boxdraw_double_up_left,
         },
         .inner = .{
-            .vertical = consts.boxdraw_vertical,
-            .horizontal = consts.boxdraw_horizontal,
-            .cross = consts.boxdraw_vertical_horizontal,
+            .vertical = STO.boxdraw_vertical,
+            .horizontal = STO.boxdraw_horizontal,
+            .cross = STO.boxdraw_vertical_horizontal,
         },
     },
     .{
@@ -219,7 +218,7 @@ const supported_charsets = [_]GraphicsCfg.Charset{
     },
 };
 
-pub fn selectGraphicsCfg(out: *uefi.protocol.SimpleTextOutput) EfiError!GraphicsCfg {
+pub fn selectGraphicsCfg(out: *STO) UefiError!GraphicsCfg {
     const minimum_columns = game.Board.columns * 2;
     const minimum_rows = game.Board.rows + 1; // plus drop column
 

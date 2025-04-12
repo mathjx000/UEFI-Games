@@ -16,23 +16,27 @@ const games = [_]GameInfo{
 };
 
 pub fn build(b: *std.Build) !void {
-    const target = b.standardTargetOptions(.{ .default_target = .{
+    const target_efi = b.resolveTargetQuery(.{
         .os_tag = .uefi,
         .cpu_arch = .x86_64,
         .abi = .msvc,
-    } });
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     for (games) |game_info| {
-        const exe = b.addExecutable(.{
-            .name = game_info.display_name,
+        const mod = b.createModule(.{
             .root_source_file = b.path(try allocPrint(
                 b.allocator,
                 "src/games/{s}/main.zig",
                 .{game_info.source_name},
             )),
-            .target = target,
+            .target = target_efi,
             .optimize = optimize,
+        });
+
+        const exe = b.addExecutable(.{
+            .name = game_info.display_name,
+            .root_module = mod,
         });
 
         const install = b.addInstallArtifact(exe, .{
@@ -44,12 +48,6 @@ pub fn build(b: *std.Build) !void {
             ),
         });
 
-        const step = b.step(
-            try allocPrint(b.allocator, "install-{s}", .{game_info.source_name}),
-            try allocPrint(b.allocator, "Install {s} artifacts", .{game_info.display_name}),
-        );
-
-        step.dependOn(&install.step);
-        b.getInstallStep().dependOn(step);
+        b.getInstallStep().dependOn(&install.step);
     }
 }
